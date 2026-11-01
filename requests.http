@@ -1,8 +1,19 @@
-### 1. Test if the Server is Alive
-GET http://localhost:8080/error
+### Define agencyAuth in your HTTP client environment as the base64-encoded
+### "username:password" for the configured API_USERNAME and API_PASSWORD.
 
-### 2. Pause a Milestone (Expecting 404 since database is empty)
+### 1. List projects (requires agency authentication)
+GET http://localhost:8080/api/projects
+Authorization: Basic {{agencyAuth}}
+Accept: application/json
+
+### 2. Pause a project (requires agency authentication)
+POST http://localhost:8080/api/projects/11111111-1111-4111-8111-111111111111/pause
+Authorization: Basic {{agencyAuth}}
+Accept: application/json
+
+### 3. Pause a milestone (requires agency authentication; expect 404 if absent)
 POST http://localhost:8080/api/projects/milestones/pause
+Authorization: Basic {{agencyAuth}}
 Content-Type: application/json
 Accept: application/json
 
@@ -11,11 +22,22 @@ Accept: application/json
   "reason": "Waiting for client deliverables"
 }
 
-### 3. Submit a Magic-Link Review (Expecting 404)
+### 4. Submit a public one-time magic-link review (expect 404 if absent)
 POST http://localhost:8080/api/projects/reviews/33333333-3333-4333-8333-333333333333
 Content-Type: application/json
 Accept: application/json
 
 {
   "feedback": "The milestone is approved. Thank you."
+}
+
+### 5. Invalid pause request (expect 400)
+POST http://localhost:8080/api/projects/milestones/pause
+Authorization: Basic {{agencyAuth}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "milestoneId": "not-a-uuid",
+  "reason": ""
 }

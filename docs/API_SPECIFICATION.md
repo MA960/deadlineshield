@@ -7,7 +7,9 @@
 - **Content type:** JSON (`application/json`) for request and response bodies.
 - **Identifiers:** UUID strings.
 - **Dates/times:** ISO 8601 instants in UTC, for example `2026-11-01T10:00:00Z`.
-- **CORS:** The backend permits the configured `FRONTEND_ORIGIN` for `/api/**` and allows `GET`, `POST`, and `OPTIONS`.
+- **CORS:** Only `http://localhost:3000` is allowed for `/api/**`; methods are `GET`, `POST`, `PUT`, `DELETE`, and `OPTIONS`. Authorization, content type, and accept headers are allowed, with credentials enabled.
+- **Authentication:** Agency routes require HTTP Basic credentials supplied by `API_USERNAME` and `API_PASSWORD`. Public client review links remain accessible without Basic authentication.
+- **Credential rules:** `API_USERNAME` must be non-blank and contain no colon; `API_PASSWORD` must be 16-72 UTF-8 bytes.
 
 The API currently has project listing and clock/review operations. Project creation and mutation of project metadata are not implemented.
 
@@ -32,7 +34,6 @@ Returns all persisted projects and their milestones. There is no pagination or f
         "id": "22222222-2222-4222-8222-222222222222",
         "name": "Approve homepage design",
         "dueAt": "2026-11-20T00:00:00Z",
-        "token": "33333333-3333-4333-8333-333333333333",
         "clockPaused": false,
         "pausedAt": null,
         "reviewFeedback": null,
@@ -44,9 +45,9 @@ Returns all persisted projects and their milestones. There is no pagination or f
 ]
 ```
 
-The JSON shape is based on the current JPA model. `organization` and each milestone's back-reference to `project` are excluded to avoid circular serialization. The model does not currently have a distinct original project target-date field; clients may use milestone `dueAt` values as the original deadline.
+The JSON shape is based on the current JPA model. `organization`, each milestone's back-reference to `project`, and the milestone review `token` are excluded from serialization. The model does not currently have a distinct original project target-date field; clients may use milestone `dueAt` values as the original deadline. Requests without valid Basic credentials receive `401 Unauthorized`.
 
-**Security note:** The current entity response includes each milestone's `token`, and the API does not require authentication. Do not expose this endpoint or its responses outside a trusted environment until review tokens are excluded from project-list responses and appropriate authentication/authorization is implemented. CORS restricts browser origins; it is not an authentication mechanism.
+**Security note:** CORS restricts browser origins; it is not an authentication mechanism. Review tokens are never serialized by the project-list endpoint.
 
 ### `POST /api/projects/{projectId}/pause`
 
@@ -81,7 +82,7 @@ Pauses one milestone clock and records the supplied reason in the audit log. Rep
 | Field | Constraint | Effect |
 |---|---|---|
 | `milestoneId` | `@NotNull` | Required UUID value. |
-| `reason` | `@NotBlank` | Required non-empty, non-whitespace reason. |
+| `reason` | `@NotBlank`, `@Size(max=500)`, `@Pattern` | Required non-whitespace reason, at most 500 characters, with no control or formatting characters. |
 
 The service also rejects missing IDs and blank reasons with `400 Bad Request`.
 
@@ -113,7 +114,7 @@ Accepts a client's review through a milestone magic-link token. A valid link mus
 
 | Field | Constraint | Effect |
 |---|---|---|
-| `feedback` | `@NotBlank` | Required non-empty, non-whitespace review feedback. |
+| `feedback` | `@NotBlank`, `@Size(max=2000)`, `@Pattern` | Required non-whitespace feedback, at most 2,000 characters, with no control or formatting characters. |
 
 **Success — `200 OK`**
 
@@ -157,6 +158,7 @@ Validation errors return `400 Bad Request` with a field-keyed `fieldErrors` obje
 |---|---|
 | `200 OK` | Request succeeded. |
 | `400 Bad Request` | Request validation failed or a supplied value is invalid. |
+| `401 Unauthorized` | Agency credentials are missing or invalid for an agency endpoint. |
 | `404 Not Found` | Requested project, milestone, or usable review link was not found. |
 | `500 Internal Server Error` | Unexpected server failure; the response message is generic and the exception is logged server-side. |
 
@@ -164,6 +166,7 @@ The listed statuses describe the API's handled outcomes. Infrastructure errors (
 
 ## Security considerations
 
-- Review tokens are bearer credentials: anyone who possesses an active token can submit feedback once for its paused milestone. Keep them out of logs, analytics, URLs shared beyond the intended client, and public project-list responses.
-- The project-list endpoint currently serializes the token field from each milestone, and the API has no authentication or authorization layer. Treat all API routes as suitable only for a trusted development environment until these controls are addressed.
-- The configured CORS origin is a browser policy, not access control. Non-browser clients can call the API regardless of CORS.
+- Review tokens are bearer credentials: anyone who possesses an active token can submit feedback once for its paused milestone. They are excluded from project-list JSON; keep them out of logs, analytics, and unintended client communications.
+- Agency endpoints use a single environment-configured HTTP Basic account and stateless sessions. The dashboard prompts for credentials and keeps them in memory only.
+- The backend sends HSTS when requests are secure. Deploy behind HTTPS in production; CORS is not access control for non-browser clients.
+- JPA lifecycle hooks prevent changes/deletions through normal entity operations, but privileged SQL and database administrators can still alter rows. Use database permissions/triggers and separately controlled immutable storage for stronger compliance guarantees.

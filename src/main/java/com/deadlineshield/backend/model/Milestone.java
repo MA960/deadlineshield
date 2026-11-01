@@ -33,6 +33,7 @@ public class Milestone {
     private Instant dueAt;
 
     @Column(nullable = false, unique = true, updatable = false)
+    @JsonIgnore
     private UUID token = UUID.randomUUID();
 
     @Column(nullable = false)

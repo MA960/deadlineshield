@@ -20,8 +20,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import {
   ApiError,
+  clearAgencyCredentials,
   getProjects,
   pauseMilestone,
+  setAgencyCredentials,
 } from "../services/api";
 import type { Milestone, Project } from "../types";
 
@@ -48,6 +50,9 @@ function projectOriginalDate(project: Project): string | null {
 }
 
 function errorMessage(error: unknown): string {
+  if (error instanceof ApiError && error.status === 401) {
+    return "Sign in with your agency API credentials to access projects.";
+  }
   if (error instanceof ApiError && error.status === 0) {
     return "The backend could not be reached. Check that the Spring Boot API is running on localhost:8080.";
   }
@@ -123,11 +128,26 @@ export default function AgencyDashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [agencyUsername, setAgencyUsername] = useState("");
+  const [agencyPassword, setAgencyPassword] = useState("");
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedMilestoneId, setSelectedMilestoneId] = useState("");
   const [pauseReason, setPauseReason] = useState("");
   const [pauseError, setPauseError] = useState<string | null>(null);
   const [isPausing, setIsPausing] = useState(false);
+
+  async function handleAgencySignIn(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAgencyCredentials(agencyUsername, agencyPassword);
+    setAgencyPassword("");
+    await loadProjects();
+  }
+
+  function handleAgencySignOut() {
+    clearAgencyCredentials();
+    setProjects([]);
+    setLoadError("Sign in with your agency API credentials to access projects.");
+  }
 
   const loadProjects = useCallback(async () => {
     setIsLoading(true);
@@ -250,6 +270,13 @@ export default function AgencyDashboardPage() {
           </Link>
           <div className="flex items-center gap-3">
             <span className="hidden text-sm text-zinc-500 sm:inline">Agency workspace</span>
+            <button
+              className="text-sm font-medium text-zinc-600 transition hover:text-zinc-950"
+              onClick={handleAgencySignOut}
+              type="button"
+            >
+              Sign out
+            </button>
             <span className="grid size-9 place-items-center rounded-full bg-zinc-100 text-sm font-semibold text-zinc-700">
               DS
             </span>
@@ -294,6 +321,34 @@ export default function AgencyDashboardPage() {
               <RefreshCw aria-hidden="true" className="size-4" />
               Retry
             </button>
+            {loadError.includes("agency API credentials") && (
+              <form className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row" onSubmit={handleAgencySignIn}>
+                <input
+                  autoComplete="username"
+                  className="h-9 rounded-lg border border-red-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(event) => setAgencyUsername(event.target.value)}
+                  placeholder="Agency username"
+                  required
+                  value={agencyUsername}
+                />
+                <input
+                  autoComplete="current-password"
+                  className="h-9 rounded-lg border border-red-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(event) => setAgencyPassword(event.target.value)}
+                  placeholder="Agency password"
+                  required
+                  type="password"
+                  value={agencyPassword}
+                />
+                <button
+                  className="h-9 rounded-lg bg-blue-600 px-3 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+                  disabled={isLoading}
+                  type="submit"
+                >
+                  Sign in
+                </button>
+              </form>
+            )}
           </div>
         )}
 

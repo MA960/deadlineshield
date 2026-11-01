@@ -8,6 +8,20 @@ import type {
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
+let authorizationHeader: string | null = null;
+
+export function setAgencyCredentials(username: string, password: string): void {
+  const credentials = new TextEncoder().encode(`${username}:${password}`);
+  const encodedCredentials = btoa(
+    Array.from(credentials, (byte) => String.fromCharCode(byte)).join(""),
+  );
+  authorizationHeader = `Basic ${encodedCredentials}`;
+}
+
+export function clearAgencyCredentials(): void {
+  authorizationHeader = null;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -29,8 +43,10 @@ async function request<T>(
       ...init,
       headers: {
         Accept: "application/json",
+        ...(authorizationHeader ? { Authorization: authorizationHeader } : {}),
         ...init?.headers,
       },
+      credentials: "include",
     });
   } catch (error) {
     const message =
@@ -49,6 +65,9 @@ async function request<T>(
   }
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearAgencyCredentials();
+    }
     const serverMessage =
       typeof body === "object" &&
       body !== null &&

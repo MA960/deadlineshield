@@ -145,11 +145,6 @@ public class ProjectClockService {
     }
 
     private void recordAudit(String action, Project project, Milestone milestone, String details) {
-        AuditLog auditLog = new AuditLog();
-        auditLog.setAction(action);
-        auditLog.setDetails(details);
-        auditLog.setProject(project);
-        auditLog.setMilestone(milestone);
-        auditLogRepository.save(auditLog);
+        auditLogRepository.save(new AuditLog(action, details, project, milestone));
     }
 }

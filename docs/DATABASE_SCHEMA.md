@@ -84,9 +84,7 @@ organizations 1 ─── * projects 1 ─── * milestones
 
 Clock pause and client review operations create audit-log records inside the same transaction as the state changes. A transaction rollback should roll back both the operation and its associated audit write.
 
-**Important limitation:** The current code does not enforce audit-log immutability. `AuditLog` has Lombok setters, `AuditLogRepository` extends `JpaRepository` (including delete operations), and the schema does not define append-only triggers or restricted database permissions. Audit entries are written as an application convention, not a tamper-proof compliance record.
-
-For production audit guarantees, use a dedicated database role that cannot update or delete audit rows, enforce append-only behavior with database permissions and/or triggers, restrict administrative access, and export records to a separately controlled immutable/WORM store. Introduce and review explicit schema migrations before changing production constraints.
+The application enforces append-only behavior at the ORM layer: `AuditLog` exposes no setters, `AuditLogRepository` only exposes `save`, and JPA `@PreUpdate` / `@PreRemove` lifecycle hooks throw exceptions. These controls block ordinary application entity updates and deletes, but are not database-level tamper protection: direct SQL, privileged database users, or bulk operations that bypass entity lifecycle callbacks may still modify rows. For production compliance guarantees, use a dedicated database role that cannot update or delete audit rows, enforce append-only behavior with database permissions and/or triggers, restrict administrative access, and export records to a separately controlled immutable/WORM store. Introduce and review explicit schema migrations before changing production constraints.
 
 ## Schema management recommendations
 
