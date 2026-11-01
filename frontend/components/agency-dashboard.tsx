@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock3,
+  CreditCard,
+  ExternalLink,
   FolderKanban,
   LoaderCircle,
   Pause,
@@ -20,6 +22,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import {
   ApiError,
+  createCheckoutSession,
   clearAgencyCredentials,
   getProjects,
   pauseMilestone,
@@ -135,6 +138,8 @@ export default function AgencyDashboardPage() {
   const [pauseReason, setPauseReason] = useState("");
   const [pauseError, setPauseError] = useState<string | null>(null);
   const [isPausing, setIsPausing] = useState(false);
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
 
   async function handleAgencySignIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -147,6 +152,24 @@ export default function AgencyDashboardPage() {
     clearAgencyCredentials();
     setProjects([]);
     setLoadError("Sign in with your agency API credentials to access projects.");
+  }
+
+  async function handleUpgrade() {
+    const organizationId = projects.find((project) => project.organizationId)?.organizationId;
+    if (!organizationId) {
+      setBillingError("No agency organization is available for billing.");
+      return;
+    }
+
+    setIsStartingCheckout(true);
+    setBillingError(null);
+    try {
+      const session = await createCheckoutSession(organizationId);
+      window.location.assign(session.checkoutUrl);
+    } catch (error) {
+      setBillingError(errorMessage(error));
+      setIsStartingCheckout(false);
+    }
   }
 
   const loadProjects = useCallback(async () => {
@@ -378,6 +401,33 @@ export default function AgencyDashboardPage() {
             value={stats.pendingApprovals}
           />
         </div>
+
+        <section className="mt-6 flex flex-col gap-5 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm shadow-blue-950/[0.03] sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div className="flex items-start gap-4">
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-blue-700 shadow-sm ring-1 ring-blue-100">
+              <CreditCard aria-hidden="true" className="size-5" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-zinc-900">DeadlineShield Pro</p>
+              <p className="mt-1 text-sm leading-5 text-zinc-600">
+                Unlock agency billing for <span className="font-semibold text-zinc-900">$49/month</span>.
+                Secure subscription checkout powered by Stripe.
+              </p>
+              {billingError && (
+                <p className="mt-2 text-sm text-red-700" role="alert">{billingError}</p>
+              )}
+            </div>
+          </div>
+          <button
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isStartingCheckout || isLoading || !projects.some((project) => project.organizationId)}
+            onClick={() => void handleUpgrade()}
+            type="button"
+          >
+            {isStartingCheckout ? "Opening checkout..." : "Upgrade to Pro"}
+            {!isStartingCheckout && <ExternalLink aria-hidden="true" className="size-4" />}
+          </button>
+        </section>
 
         <section className="mt-8 overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm shadow-zinc-950/[0.02]">
           <div className="flex flex-col gap-3 border-b border-zinc-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">

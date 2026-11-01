@@ -1,5 +1,6 @@
 import type {
   ClientApprovalResponse,
+  CheckoutSessionResponse,
   PauseMilestoneResponse,
   PauseProjectRequest,
   Project,
@@ -88,6 +89,16 @@ async function request<T>(
 
 export async function getProjects(): Promise<Project[]> {
   return request<Project[]>("/api/projects");
+}
+
+export async function createCheckoutSession(
+  organizationId: string,
+): Promise<CheckoutSessionResponse> {
+  return request<CheckoutSessionResponse>("/api/billing/checkout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ organizationId }),
+  });
 }
 
 export async function pauseMilestone(

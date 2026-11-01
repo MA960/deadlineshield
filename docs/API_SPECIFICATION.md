@@ -8,7 +8,7 @@
 - **Identifiers:** UUID strings.
 - **Dates/times:** ISO 8601 instants in UTC, for example `2026-11-01T10:00:00Z`.
 - **CORS:** Only `http://localhost:3000` is allowed for `/api/**`; methods are `GET`, `POST`, `PUT`, `DELETE`, and `OPTIONS`. Authorization, content type, and accept headers are allowed, with credentials enabled.
-- **Authentication:** Agency routes require HTTP Basic credentials supplied by `API_USERNAME` and `API_PASSWORD`. Public client review links remain accessible without Basic authentication.
+- **Authentication:** Agency routes require HTTP Basic credentials supplied by `API_USERNAME` and `API_PASSWORD`; local defaults are `admin` and `SuperSecretPassword123!`. Public client review links remain accessible without Basic authentication. Override the local defaults before exposing the service beyond local development.
 - **Credential rules:** `API_USERNAME` must be non-blank and contain no colon; `API_PASSWORD` must be 16-72 UTF-8 bytes.
 
 The API currently has project listing and clock/review operations. Project creation and mutation of project metadata are not implemented.
@@ -25,6 +25,7 @@ Returns all persisted projects and their milestones. There is no pagination or f
 [
   {
     "id": "11111111-1111-4111-8111-111111111111",
+    "organizationId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     "name": "Website redesign",
     "description": "Refresh the public website",
     "adjustedTargetDate": "2026-12-15T00:00:00Z",
@@ -129,6 +130,36 @@ Accepts a client's review through a milestone magic-link token. A valid link mus
 
 **Other responses:** `400 Bad Request` for blank feedback; `404 Not Found` if the token is unknown, the milestone is not paused, the pause timestamp is absent, or the link was already used.
 
+### `POST /api/billing/checkout`
+
+Creates a Stripe Checkout Session for the agency organization and returns its redirect URL. This route requires agency HTTP Basic authentication. The subscription price is fixed at **USD $49 per month**.
+
+**Request**
+
+```json
+{
+  "organizationId": "11111111-1111-4111-8111-111111111111"
+}
+```
+
+`organizationId` is required and must be a UUID.
+
+**Success — `200 OK`**
+
+```json
+{
+  "checkoutUrl": "https://checkout.stripe.com/c/pay/..."
+}
+```
+
+The client should redirect the user to `checkoutUrl`. Configure `STRIPE_API_KEY` and `APP_FRONTEND_URL` in the backend. A missing Stripe API key returns `503 Service Unavailable`; a nonexistent organization returns `404 Not Found`; Stripe API errors return `502 Bad Gateway`.
+
+### `POST /api/billing/webhook`
+
+Publicly reachable Stripe webhook receiver. The backend verifies the `Stripe-Signature` header against `STRIPE_WEBHOOK_SECRET`. For `invoice.payment_succeeded`, the organization linked to the Stripe customer is marked `ACTIVE` and its subscription ID is stored. Other verified event types are acknowledged and ignored.
+
+Configure the Stripe endpoint to listen for `invoice.payment_succeeded`. Invalid or missing signatures return `400 Bad Request`; an unset webhook secret returns `503 Service Unavailable`. Stripe should retry transient non-2xx responses.
+
 ## Error responses
 
 The global exception handler returns JSON errors for handled failures:
@@ -159,6 +190,8 @@ Validation errors return `400 Bad Request` with a field-keyed `fieldErrors` obje
 | `200 OK` | Request succeeded. |
 | `400 Bad Request` | Request validation failed or a supplied value is invalid. |
 | `401 Unauthorized` | Agency credentials are missing or invalid for an agency endpoint. |
+| `502 Bad Gateway` | Stripe rejected or failed to process a checkout request. |
+| `503 Service Unavailable` | Stripe API or webhook configuration is missing. |
 | `404 Not Found` | Requested project, milestone, or usable review link was not found. |
 | `500 Internal Server Error` | Unexpected server failure; the response message is generic and the exception is logged server-side. |
 

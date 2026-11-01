@@ -41,3 +41,18 @@ Accept: application/json
   "milestoneId": "not-a-uuid",
   "reason": ""
 }
+
+### 6. Start a $49/month Pro checkout session (requires agency authentication)
+POST http://localhost:8080/api/billing/checkout
+Authorization: Basic {{agencyAuth}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "organizationId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+}
+
+### Stripe webhook testing:
+### Configure Stripe CLI to forward invoice.payment_succeeded to
+### http://localhost:8080/api/billing/webhook and set STRIPE_WEBHOOK_SECRET
+### to the signing secret returned by `stripe listen`.

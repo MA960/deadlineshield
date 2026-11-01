@@ -1,11 +1,16 @@
 export interface Project {
   id: string;
+  organizationId: string | null;
   name: string;
   description: string | null;
   originalTargetDate?: string | null;
   adjustedTargetDate: string | null;
   createdAt: string;
   milestones: Milestone[];
+}
+
+export interface CheckoutSessionResponse {
+  checkoutUrl: string;
 }
 
 export interface Milestone {

@@ -1,6 +1,7 @@
 package com.deadlineshield.backend.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -43,4 +44,9 @@ public class Project {
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Milestone> milestones = new ArrayList<>();
+
+    @JsonProperty("organizationId")
+    public UUID getOrganizationId() {
+        return organization == null ? null : organization.getId();
+    }
 }

@@ -52,6 +52,7 @@ From the repository root, set the database connection environment variables and 
 $env:SPRING_DATASOURCE_URL = "jdbc:postgresql://localhost:5432/deadlineshield"
 $env:SPRING_DATASOURCE_USERNAME = "postgres"
 $env:DB_PASSWORD = "<your-local-postgres-password>"
+# Optional for local testing; override both before any shared or production deployment.
 $env:API_USERNAME = "agency"
 $env:API_PASSWORD = "<16-to-72-UTF-8-byte-secret>"
 mvn spring-boot:run
@@ -71,21 +72,26 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) and sign in using the configured agency API username and password. Credentials are kept in page memory, are not stored in browser storage, and must be entered again after a reload. For a remote backend used by this local dashboard, set `NEXT_PUBLIC_API_BASE_URL` to its HTTPS base URL. The hard-coded CORS allowlist is intentionally local-development-only; a deployed frontend needs its exact trusted origin added before deployment.
 
-The dashboard calls `GET /api/projects`. The project and milestone records need to exist in PostgreSQL for populated dashboard data and successful pause/review operations. The repository currently has no project-creation endpoint or seed-data script.
+The dashboard calls `GET /api/projects`. On startup, the backend seeds two sample projects and four milestones if the `projects` table is empty; it leaves existing project data unchanged. The repository currently has no project-creation endpoint.
 
 ## Environment variables
 
 | Variable | Component | Default / required | Purpose |
 |---|---|---|---|
 | `DB_PASSWORD` | Backend | Required | PostgreSQL password referenced by `spring.datasource.password`. |
-| `API_USERNAME` | Backend | Required | Agency API username; non-blank and must not contain `:`. |
-| `API_PASSWORD` | Backend | Required | Agency API password; 16-72 UTF-8 bytes. |
+| `API_USERNAME` | Backend | `admin` | Agency API username; non-blank and must not contain `:`. |
+| `API_PASSWORD` | Backend | `SuperSecretPassword123!` | Agency API password; 16-72 UTF-8 bytes. Override the development default before deployment. |
+| `STRIPE_API_KEY` | Backend | Required to start checkout | Stripe secret API key used to create customers and Checkout sessions. |
+| `STRIPE_WEBHOOK_SECRET` | Backend | Required to accept Stripe webhooks | Signing secret for the configured Stripe webhook endpoint. |
+| `APP_FRONTEND_URL` | Backend | `http://localhost:3000` | Redirect base URL after checkout succeeds or is cancelled. |
 | `SPRING_DATASOURCE_URL` | Backend | `jdbc:postgresql://localhost:5432/postgres` | JDBC URL. Override to select the local `deadlineshield` database. |
 | `SPRING_DATASOURCE_USERNAME` | Backend | `postgres` | PostgreSQL login. |
 | `SERVER_PORT` | Backend | `8080` | HTTP port (Spring's environment override for `server.port`). |
 | `NEXT_PUBLIC_API_BASE_URL` | Frontend | `http://localhost:8080` | Backend base URL used by the browser API client. |
 
-The backend allows browser CORS only from `http://localhost:3000`; this is intentionally fixed for local development. Use local shell variables or ignored `.env` files for secrets. Do not commit credentials. HTTP Basic credentials are transmitted on each agency API request, so production deployments must use HTTPS and should replace the single shared in-memory agency account with an identity provider and per-user authorization.
+The backend allows browser CORS only from `http://localhost:3000`; this is intentionally fixed for local development. The documented Basic-auth defaults are for local testing only: set unique credentials before exposing the API beyond a local development machine. Use local shell variables or ignored `.env` files for secrets. Do not commit credentials. HTTP Basic credentials are transmitted on each agency API request, so production deployments must use HTTPS and should replace the single shared in-memory agency account with an identity provider and per-user authorization.
+
+Stripe billing uses a fixed USD `$49/month` recurring price generated in Checkout. Configure a Stripe webhook for `POST /api/billing/webhook` and subscribe to `invoice.payment_succeeded`; set the webhook signing secret in `STRIPE_WEBHOOK_SECRET`. Test locally with Stripe test-mode keys and the Stripe CLI before enabling live billing.
 
 ## Verification
 

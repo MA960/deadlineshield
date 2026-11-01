@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Column;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +30,14 @@ public class Organization {
     private String name;
 
     private Instant createdAt = Instant.now();
+
+    @Column(length = 20, nullable = false)
+    private String subscriptionStatus = "FREE";
+
+    @Column(unique = true)
+    private String stripeCustomerId;
+
+    private String stripeSubscriptionId;
 
     @OneToMany(mappedBy = "organization", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Project> projects = new ArrayList<>();

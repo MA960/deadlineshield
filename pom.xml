@@ -52,6 +52,12 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.stripe</groupId>
+            <artifactId>stripe-java</artifactId>
+            <version>29.0.0</version>
+        </dependency>
+
         <!-- Lombok to reduce boilerplate getters/setters -->
         <dependency>
             <groupId>org.projectlombok</groupId>
