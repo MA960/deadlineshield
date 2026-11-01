@@ -1,0 +1,21 @@
+### 1. Test if the Server is Alive
+GET http://localhost:8080/error
+
+### 2. Pause a Milestone (Expecting 404 since database is empty)
+POST http://localhost:8080/api/projects/milestones/pause
+Content-Type: application/json
+Accept: application/json
+
+{
+  "milestoneId": "22222222-2222-4222-8222-222222222222",
+  "reason": "Waiting for client deliverables"
+}
+
+### 3. Submit a Magic-Link Review (Expecting 404)
+POST http://localhost:8080/api/projects/reviews/33333333-3333-4333-8333-333333333333
+Content-Type: application/json
+Accept: application/json
+
+{
+  "feedback": "The milestone is approved. Thank you."
+}
